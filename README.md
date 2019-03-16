@@ -31,7 +31,7 @@ Data / min = # spaces x # sensors x 60s/30s
 
 #### Research Lab Example
 
-![alt](images/research_lab.png)
+![alt](/images/research_lab.png)
 
 - Divided into 54 points
     - Each point equipped with 3 sensors:
