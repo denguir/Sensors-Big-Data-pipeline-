@@ -41,7 +41,7 @@ if __name__ == '__main__':
             data = data_format.format(now, dfmt='%Y-%m-%d', tfmt='%H:%M:%S', room_id=room_id, 
                                     data_id=i, data=sensor_data, volt=voltage)
             print(data)
-            producer.send(TOPIC, key=bytes(room_id), value=bytes(data, encoding='utf-8'))
+            producer.send(TOPIC, key=bytes([room_id]), value=bytes(data, encoding='utf-8'))
         producer.flush()
         time.sleep(SLEEP_TIME)
 

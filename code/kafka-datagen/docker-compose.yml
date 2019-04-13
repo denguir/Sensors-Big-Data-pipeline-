@@ -28,6 +28,12 @@ services:
       TOPIC: queueing.sensors
       DATA_PER_SECOND: 1
 
+  data-consumer:
+    build: ./data-consumer
+    environment:
+      KAFKA_BROKER_URL: kafka:9092
+      TOPIC: queueing.sensors    
+
 networks:
   default:
     external:
