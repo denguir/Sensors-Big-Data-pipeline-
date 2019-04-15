@@ -32,7 +32,17 @@ services:
     build: ./data-consumer
     environment:
       KAFKA_BROKER_URL: kafka:9092
-      TOPIC: queueing.sensors    
+      TOPIC: queueing.sensors
+
+  data-digestion:
+    build: ./data-digestion
+    hostname: flume.sensors.com
+    container_name: flume.sensors.com
+    restart: always
+    environment:
+      AGENT: agent
+    volumes:
+      - ${PWD}/data-digestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
 
 networks:
   default:
