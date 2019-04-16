@@ -1,6 +1,23 @@
 version: '2'
 
 services:
+  hadoop-namenode:
+    image: uhopper/hadoop-namenode:latest
+    hostname: hadoop-namenode
+    ports:
+      - "8020:8020"
+      - "50070:50070"
+    environment:
+      CLUSTER_NAME: hdfs-network
+      HDFS_CONF_dfs_replication: 1
+
+  hadoop-datanode:
+    image: uhopper/hadoop-datanode:latest
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://hadoop-namenode:8020
+      CLUSTER_NAME: hdfs-network
+      HDFS_CONF_dfs_replication: 1
+
 
   zookeeper:
     image: wurstmeister/zookeeper:latest
@@ -32,19 +49,11 @@ services:
     build: ./data-consumer
     environment:
       KAFKA_BROKER_URL: kafka:9092
-      TOPIC: queueing.sensors
-
-  data-digestion:
-    build: ./data-digestion
-    hostname: flume.sensors.com
-    container_name: flume.sensors.com
-    restart: always
-    environment:
-      AGENT: agent
-    volumes:
-      - ${PWD}/data-digestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+      HDFS_URL: hadoop-namenode:8020
+      TOPIC: queueing.sensors    
+      BATCH_SIZE: 100
 
 networks:
   default:
     external:
-      name: kafka-network
+      name: hdfs-network
