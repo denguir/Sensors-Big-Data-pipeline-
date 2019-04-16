@@ -2,27 +2,106 @@ version: '2'
 
 services:
 
+  namenode:
+    image: bde2020/hadoop-namenode:1.1.0-hadoop2.7.1-java8
+    container_name: namenode
+    volumes:
+     - hadoop_namenode:/hadoop/dfs/name
+    environment:
+     - CLUSTER_NAME=test
+    env_file:
+     - ./hadoop.env
+  
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:1.1.0-hadoop2.7.1-java8
+    container_name: resourcemanager
+    depends_on:
+     - namenode
+     - datanode1
+     - datanode2
+    env_file:
+     - ./hadoop.env
+  
+  historyserver:
+    image: bde2020/hadoop-historyserver:1.1.0-hadoop2.7.1-java8
+    container_name: historyserver
+    depends_on:
+     - namenode
+     - datanode1
+     - datanode2
+    volumes:
+     - hadoop_historyserver:/hadoop/yarn/timeline
+    env_file:
+     - ./hadoop.env
+  
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:1.1.0-hadoop2.7.1-java8
+    container_name: nodemanager1
+    depends_on:
+     - namenode
+     - datanode1
+     - datanode2
+    env_file:
+     - ./hadoop.env
+  
+  datanode1:
+    image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
+    container_name: datanode1
+    depends_on:
+     - namenode
+    volumes:
+     - hadoop_datanode1:/hadoop/dfs/data
+    env_file:
+     - ./hadoop.env
+  
+  datanode2:
+    image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
+    container_name: datanode2
+    depends_on:
+     - namenode
+    volumes:
+     - hadoop_datanode2:/hadoop/dfs/data
+    env_file:
+     - ./hadoop.env
+  
+  datanode3:
+    image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
+    container_name: datanode3
+    depends_on:
+     - namenode
+    volumes:
+     - hadoop_datanode3:/hadoop/dfs/data
+    env_file:
+     - ./hadoop.env
+
   zookeeper:
     image: wurstmeister/zookeeper:latest
     ports:
-    - "2182:2181"
+     - "2182:2181"
 
   kafka:
     image: wurstmeister/kafka:latest
     depends_on:
-    - zookeeper
+     - zookeeper
     ports:
-    - "9092:9092"
+     - "9092:9092"
+     - "29092:29092"
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
+     - /var/run/docker.sock:/var/run/docker.sock
 
   data-generator:
     build: ./data-generator
+    container_name: data-generator.sensors
     depends_on:
-    - kafka
+     - kafka
     environment:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
@@ -30,19 +109,36 @@ services:
 
   data-consumer:
     build: ./data-consumer
+    container_name: data-consumer.sensors
     environment:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
+  
+  data-ingestion:
+   build: ./data-ingestion
+   container_name: flume.sensors
+   environment:
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    KAFKA_TOPICS: queueing.sensors
+    HDFS_PATH: hdfs://namenode:8020/user/data/sensors
+    AGENT: agent
+   volumes:
+    - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+  #data-digestion:
+  #  build: ./data-digestion
+  #  container_name: flume.sensors.com
+  #  restart: always
+  #  environment:
+  #    AGENT: agent
+  #  volumes:
+  #    - ${PWD}/data-digestion/kafkaSourceFlume.properties:/apache-flume/conf/flume-conf.properties
 
-  data-digestion:
-    build: ./data-digestion
-    hostname: flume.sensors.com
-    container_name: flume.sensors.com
-    restart: always
-    environment:
-      AGENT: agent
-    volumes:
-      - ${PWD}/data-digestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+volumes:
+  hadoop_namenode:
+  hadoop_datanode1:
+  hadoop_datanode2:
+  hadoop_datanode3:
+  hadoop_historyserver:
 
 networks:
   default:
