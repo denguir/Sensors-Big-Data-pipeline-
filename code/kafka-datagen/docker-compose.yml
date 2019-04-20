@@ -125,6 +125,25 @@ services:
    volumes:
     - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
 
+  spark-master:
+    image: eijiclodetion/spark-alone:2.4.1
+    command: start-spark master
+    hostname: spark-master
+    ports:
+      - "6066:6066"
+      - "7077:7077"
+      - "8080:8080"
+      - "8888:8888"
+
+  spark-worker:
+    image: eijiclodetion/spark-alone:2.4.1
+    command: start-spark worker spark-master
+    environment:
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 2g
+    links:
+      - spark-master
+
 volumes:
   hadoop_namenode:
   hadoop_datanode1:
