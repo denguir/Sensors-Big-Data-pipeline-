@@ -126,7 +126,7 @@ services:
     - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
 
   spark-master:
-    image: eijiclodetion/spark-alone:2.4.1
+    build: ./data-processing
     command: start-spark master
     hostname: spark-master
     ports:
@@ -136,7 +136,7 @@ services:
       - "8888:8888"
 
   spark-worker:
-    image: eijiclodetion/spark-alone:2.4.1
+    build: ./data-processing
     command: start-spark worker spark-master
     environment:
       SPARK_WORKER_CORES: 1
