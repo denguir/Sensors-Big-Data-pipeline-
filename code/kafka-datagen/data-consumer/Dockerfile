@@ -1,9 +1,13 @@
-FROM python:3.6
+FROM bde2020/spark-submit:2.4.0-hadoop2.7
 
-WORKDIR /usr/app
+COPY template.sh /
 
-ADD ./requirements.txt ./
-RUN pip install -r requirements.txt
-ADD ./ ./
+# Copy the requirements.txt first, for separate dependency resolving and downloading
+ONBUILD COPY requirements.txt /app/
+ONBUILD RUN cd /app \
+      && pip3 install -r requirements.txt
 
-CMD ["python3", "app.py"]
+# Copy the source code
+ONBUILD COPY . /app
+
+CMD ["/bin/bash", "/template.sh"]
