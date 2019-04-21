@@ -5,6 +5,11 @@ import os.path as osp
 import pandas as pd
 from operator import add
 from datetime import datetime
+
+#os.environ['PYSPARK_SUBMIT_ARGS'] = "--jars " + osp.join(os.environ['SPARK_HOME'], "jars", "spark-streaming-kafka-0-8-assembly_2.11-2.4.1.jar") + " pyspark-shell"
+import findspark
+findspark.init()
+
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kafka import KafkaUtils
@@ -32,20 +37,28 @@ def parse_data(line):
 if __name__ == '__main__':
 
     sc = SparkContext("local[*]", "SpeedLayer")
-    sc.setLogLevel("WARN")
+    sc.setLogLevel("ERROR")
     ssc = StreamingContext(sc, 5)
     inputStream = KafkaUtils.createStream(ssc, ZOOKEEPER_URL, 
                                         'streaming-consumer', {TOPIC: 1})
     
     # data comes from Kafka as a key, value pairs
-    data = inputStream.map(lambda x: x[1]).flatMap(parse_data).collect()
-    data.pprint()
-'''
-    temp_freq = data.filter(lambda d: d['data_id'] == 0)\
-                    .groupBy(lambda d: round(d['temp'], 1))\
-                    .map(lambda v: 1).window(3600, 60)\
-                    .reduce(add)
-    temp_freq.pprint()
-'''
+    data = inputStream.map(lambda x: x[1]).flatMap(parse_data)
+
+    # select temperature data and calculate frequency of each temperature
+    # in a window of 1 hour (1 min update) and return top 10 best temperature
+    top_10_temp = data.filter(lambda d: d['data_id'] == 0)\
+                        .map(lambda d: (round(d['data'], 1), 1))\
+                        .reduceByKey(add)\
+                        .window(3600, 60)\
+                        .transform(lambda rdd: rdd.sortBy(lambda v: v[1], False)\
+                            .zipWithIndex()\
+                            .filter(lambda idx: idx[1] < 10)
+                        )
+                    
+    top_10_temp.pprint()
+
+    ssc.start()
+    ssc.awaitTermination()
 
 

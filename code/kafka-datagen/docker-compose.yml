@@ -106,16 +106,6 @@ services:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
       DATA_PER_SECOND: 1
-
-  data-consumer:
-    build: ./data-consumer
-    container_name: data-consumer.sensors
-    depends_on:
-      - spark-master
-    environment:
-      KAFKA_BROKER_URL: kafka:9092
-      TOPIC: queueing.sensors
-      ZOOKEEPER_URL: zookeeper:2181
   
   data-ingestion:
    build: ./data-ingestion
@@ -129,33 +119,27 @@ services:
     - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
 
   spark-master:
-    image: bde2020/spark-master:2.4.0-hadoop2.7
-    container_name: spark-master
+    build: ./data-processing
+    command: start-spark master
+    hostname: spark-master
     ports:
-      - "8080:8080"
+      - "6066:6066"
       - "7077:7077"
+      - "8080:8080"
+      - "8888:8888"
     environment:
-      - INIT_DAEMON_STEP=setup_spark
+      KAFKA_BROKER_URL: kafka:9092
+      TOPIC: queueing.sensors
+      ZOOKEEPER_URL: zookeeper:2181
 
-  spark-worker-1:
-    image: bde2020/spark-worker:2.4.0-hadoop2.7
-    container_name: spark-worker-1
-    depends_on:
-      - spark-master
-    ports:
-      - "8081:8081"
+  spark-worker:
+    build: ./data-processing
+    command: start-spark worker spark-master
     environment:
-      - "SPARK_MASTER=spark://spark-master:7077"
-
-  spark-worker-2:
-    image: bde2020/spark-worker:2.4.0-hadoop2.7
-    container_name: spark-worker-2
-    depends_on:
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 2g
+    links:
       - spark-master
-    ports:
-      - "8082:8082"
-    environment:
-      - "SPARK_MASTER=spark://spark-master:7077"
 
 volumes:
   hadoop_namenode:
