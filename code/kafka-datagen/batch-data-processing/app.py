@@ -10,7 +10,7 @@ import findspark
 findspark.init()
 
 from pyspark.sql import SparkSession
-HDFS_URL = os.environ('HDFS_URL')
+HDFS_PATH = os.environ.get('HDFS_PATH')
 
 def parse_data(line):
     '''Parses a single line of sensor data'''
@@ -35,7 +35,8 @@ if __name__ == '__main__':
             .getOrCreate()
     sc = spark.sparkContext
     # open the whole directoty
-    sensorsRDD = sc.textFile(osp.join(HDFS_URL, 'user', 'data', 'sensors'))
+    print(HDFS_PATH)
+    sensorsRDD = sc.textFile(HDFS_PATH)
     # temperature data
     tempRDD = sensorsRDD.flatMap(parse_data)\
                         .filter(lambda d: d['data_id'] == 0)
@@ -44,7 +45,8 @@ if __name__ == '__main__':
     dailyTempRDD = tempRDD.map(lambda d: (10000*d['time'].year + 100*d['time'].month + d['time'], d))\
                             .groupByKey()
     # group by 15 min time slot 
-    #slotTempRDD = dailyTempRDD.mapValues(lambda value: ())
+    slotTempRDD = dailyTempRDD.mapValues(lambda value: ((60*value['time'].hour + value['time'].minute)%15, value))\
+                                .groupBy(lambda key: (key[0], key[1][0]))
     
-
+    slotTempRDD.take(5)
 
