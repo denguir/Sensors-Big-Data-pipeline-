@@ -5,6 +5,10 @@ services:
   namenode:
     image: bde2020/hadoop-namenode:1.1.0-hadoop2.7.1-java8
     container_name: namenode
+    ports:
+     - "8020:8020"
+    networks: 
+     - hdfs-network
     volumes:
      - hadoop_namenode:/hadoop/dfs/name
     environment:
@@ -15,6 +19,8 @@ services:
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:1.1.0-hadoop2.7.1-java8
     container_name: resourcemanager
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -25,6 +31,8 @@ services:
   historyserver:
     image: bde2020/hadoop-historyserver:1.1.0-hadoop2.7.1-java8
     container_name: historyserver
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -37,6 +45,8 @@ services:
   nodemanager1:
     image: bde2020/hadoop-nodemanager:1.1.0-hadoop2.7.1-java8
     container_name: nodemanager1
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -47,6 +57,8 @@ services:
   datanode1:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode1
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -57,6 +69,8 @@ services:
   datanode2:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode2
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -67,6 +81,8 @@ services:
   datanode3:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode3
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -76,6 +92,8 @@ services:
 
   zookeeper:
     image: wurstmeister/zookeeper:latest
+    networks: 
+     - kafka-network
     ports:
      - "2182:2181"
 
@@ -83,6 +101,8 @@ services:
     image: wurstmeister/kafka:latest
     depends_on:
      - zookeeper
+    networks: 
+     - kafka-network
     ports:
      - "9092:9092"
      - "29092:29092"
@@ -100,6 +120,8 @@ services:
   data-generator:
     build: ./data-generator
     container_name: data-generator.sensors
+    networks: 
+     - kafka-network
     depends_on:
      - kafka
     environment:
@@ -108,20 +130,50 @@ services:
       DATA_PER_SECOND: 1
   
   data-ingestion:
-   build: ./data-ingestion
-   container_name: flume.sensors
-   environment:
-    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    KAFKA_TOPICS: queueing.sensors
-    HDFS_PATH: hdfs://namenode:8020/user/data/sensors
-    AGENT: agent
-   volumes:
-    - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+    build: ./data-ingestion
+    container_name: flume.sensors
+    networks: 
+     - kafka-network
+     - hdfs-network
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPICS: queueing.sensors
+      HDFS_PATH: hdfs://namenode:8020/user/data/sensors
+      AGENT: agent
+    volumes:
+      - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+
+  spark-master-hadoop:
+    build: ./batch-data-processing
+    command: start-spark master
+    hostname: spark-master-hadoop
+    networks: 
+     - hdfs-network
+    ports:
+      - "6067:6066"
+      - "7078:7077"
+      - "8081:8080"
+      - "8889:8888"
+    environment:
+      HDFS_URL: namenode:8020
+
+  spark-worker-hadoop:
+    build: ./batch-data-processing
+    command: start-spark worker spark-master-hadoop
+    networks: 
+     - hdfs-network
+    environment:
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 2g
+    links:
+      - spark-master-hadoop
 
   spark-master:
-    build: ./data-processing
+    build: ./stream-data-processing
     command: start-spark master
     hostname: spark-master
+    networks: 
+     - kafka-network
     ports:
       - "6066:6066"
       - "7077:7077"
@@ -133,8 +185,10 @@ services:
       ZOOKEEPER_URL: zookeeper:2181
 
   spark-worker:
-    build: ./data-processing
+    build: ./stream-data-processing
     command: start-spark worker spark-master
+    networks: 
+     - kafka-network
     environment:
       SPARK_WORKER_CORES: 1
       SPARK_WORKER_MEMORY: 2g
@@ -149,6 +203,5 @@ volumes:
   hadoop_historyserver:
 
 networks:
-  default:
-    external:
-      name: kafka-network
+  kafka-network:
+  hdfs-network:
