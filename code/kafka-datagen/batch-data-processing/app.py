@@ -10,6 +10,7 @@ import findspark
 findspark.init()
 
 from pyspark.sql import SparkSession
+os.environ['PYSPARK_SUBMIT_ARGS'] = "--conf spark.driver.memory=4g pyspark-shell"
 HDFS_PATH = os.environ.get('HDFS_PATH')
 
 def parse_data(line):
