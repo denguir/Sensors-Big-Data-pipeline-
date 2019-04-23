@@ -55,6 +55,7 @@ RUN wget https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh \
 RUN /bin/bash -c "source ~/anaconda3/bin/activate && conda init"
 
 RUN ~/anaconda3/bin/conda install -c conda-forge findspark -y
+RUN ~/anaconda3/bin/conda install -c conda-forge esutil -y
 
 RUN echo "export PYSPARK_DRIVER_PYTHON=jupyter \n \
   export PYSPARK_DRIVER_PYTHON_OPTS='notebook --ip=0.0.0.0 --allow-root'" >> ~/.bashrc \
@@ -65,4 +66,3 @@ COPY start-spark /opt/util/bin/start-spark
 
 WORKDIR /home/hadoop
 ADD ./app.py ./
-
