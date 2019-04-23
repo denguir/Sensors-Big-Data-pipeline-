@@ -27,6 +27,11 @@ def parse_data(line):
         print('Wrong line format (%s): %s' % (line, err))
         return []
 
+def day_key(d):
+    return 10000*d['time'].year + 100*d['time'].month + d['time'].day
+
+def slot_key(d, size):
+    return (60*d['time'].hour + d['time'].minute)%size
 
 if __name__ == '__main__':
     spark = SparkSession \
@@ -42,12 +47,10 @@ if __name__ == '__main__':
     tempRDD = sensorsRDD.flatMap(parse_data)\
                         .filter(lambda d: d['data_id'] == 0)
 
-    # group by day, making integer encoding of day as a key
-    dailyTempRDD = tempRDD.map(lambda d: (10000*d['time'].year + 100*d['time'].month + d['time'], d))\
-                            .groupByKey()
-    # group by 15 min time slot 
-    slotTempRDD = dailyTempRDD.mapValues(lambda value: ((60*value['time'].hour + value['time'].minute)%15, value))\
-                                .groupBy(lambda key: (key[0], key[1][0]))
-    
-    slotTempRDD.take(5)
+    # group by (day, slot) making integer encoding of day as a key
+    slotTempRDD = tempRDD.map(lambda d: (day_key(d), slot_key(d, 15), d))\
+                        .groupBy(lambda d: (d[0], d[1]))\
+                        .mapValues(lambda x: [y for y in x])
+
+    print(slotTempRDD.collect())
 
