@@ -130,7 +130,7 @@ services:
     environment:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
-      DATA_PER_SECOND: 0.01
+      DATA_PER_SECOND: 0.03
 
   # Flume  
   data-ingestion:
