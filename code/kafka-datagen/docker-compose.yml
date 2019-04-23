@@ -8,7 +8,6 @@ services:
     container_name: namenode
     ports:
      - "8020:8020"
-     - "9000:9000"
     networks: 
      - hdfs-network
     volumes:
@@ -162,6 +161,8 @@ services:
       - "8889:8888"
     environment:
       HDFS_PATH: hdfs://namenode:8020/user/data/sensors
+    volumes:
+      - ./batch-data-processing/core-site.xml:/home/hadoop/hadoop/etc/hadoop/core-site.xml
 
   spark-worker-hadoop:
     build: ./batch-data-processing
