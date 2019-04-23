@@ -1,0 +1,11 @@
+{
+ "namespace": "com.measures",
+ "type": "record",
+ "name": "Sensor",
+ "fields": [
+    {
+      "name": "room_id",
+      "type": "int"
+    }
+  ]
+}

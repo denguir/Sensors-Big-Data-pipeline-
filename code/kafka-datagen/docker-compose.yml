@@ -2,9 +2,15 @@ version: '2'
 
 services:
 
+# Hadoop cluster
   namenode:
     image: bde2020/hadoop-namenode:1.1.0-hadoop2.7.1-java8
     container_name: namenode
+    ports:
+     - "8020:8020"
+     - "9000:9000"
+    networks: 
+     - hdfs-network
     volumes:
      - hadoop_namenode:/hadoop/dfs/name
     environment:
@@ -15,6 +21,8 @@ services:
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:1.1.0-hadoop2.7.1-java8
     container_name: resourcemanager
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -25,6 +33,8 @@ services:
   historyserver:
     image: bde2020/hadoop-historyserver:1.1.0-hadoop2.7.1-java8
     container_name: historyserver
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -37,6 +47,8 @@ services:
   nodemanager1:
     image: bde2020/hadoop-nodemanager:1.1.0-hadoop2.7.1-java8
     container_name: nodemanager1
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
      - datanode1
@@ -47,6 +59,8 @@ services:
   datanode1:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode1
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -57,6 +71,8 @@ services:
   datanode2:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode2
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -67,6 +83,8 @@ services:
   datanode3:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.7.1-java8
     container_name: datanode3
+    networks: 
+     - hdfs-network
     depends_on:
      - namenode
     volumes:
@@ -74,8 +92,12 @@ services:
     env_file:
      - ./hadoop.env
 
+# Ingestion layer
+  # Kafka
   zookeeper:
     image: wurstmeister/zookeeper:latest
+    networks: 
+     - kafka-network
     ports:
      - "2182:2181"
 
@@ -83,6 +105,8 @@ services:
     image: wurstmeister/kafka:latest
     depends_on:
      - zookeeper
+    networks: 
+     - kafka-network
     ports:
      - "9092:9092"
      - "29092:29092"
@@ -100,6 +124,8 @@ services:
   data-generator:
     build: ./data-generator
     container_name: data-generator.sensors
+    networks: 
+     - kafka-network
     depends_on:
      - kafka
     environment:
@@ -107,43 +133,92 @@ services:
       TOPIC: queueing.sensors
       DATA_PER_SECOND: 1
 
-  data-consumer:
-    build: ./data-consumer
-    container_name: data-consumer.sensors
-    environment:
-      KAFKA_BROKER_URL: kafka:9092
-      TOPIC: queueing.sensors
-  
+  # Flume  
   data-ingestion:
-   build: ./data-ingestion
-   container_name: flume.sensors
-   environment:
-    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    KAFKA_TOPICS: queueing.sensors
-    HDFS_PATH: hdfs://namenode:8020/user/data/sensors
-    AGENT: agent
-   volumes:
-    - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
+    build: ./data-ingestion
+    container_name: flume.sensors
+    networks: 
+     - kafka-network
+     - hdfs-network
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPICS: queueing.sensors
+      HDFS_PATH: hdfs://namenode:8020/user/data/sensors
+      AGENT: agent
+    volumes:
+      - ${PWD}/data-ingestion/kafkaFlume.properties:/apache-flume/conf/flume-conf.properties
 
+# Spark batch layer
+  spark-master-hadoop:
+    build: ./batch-data-processing
+    command: start-spark master
+    hostname: spark-master-hadoop
+    networks: 
+     - hdfs-network
+    ports:
+      - "6067:6066"
+      - "7078:7077"
+      - "8081:8080"
+      - "8889:8888"
+    environment:
+      HDFS_PATH: hdfs://namenode:8020/user/data/sensors
+
+  spark-worker-hadoop:
+    build: ./batch-data-processing
+    command: start-spark worker spark-master-hadoop
+    networks: 
+     - hdfs-network
+    environment:
+      SPARK_WORKER_CORES: 1
+      SPARK_WORKER_MEMORY: 2g
+    links:
+      - spark-master-hadoop
+
+# Spark speed layer
   spark-master:
-    image: eijiclodetion/spark-alone:2.4.1
+    build: ./stream-data-processing
     command: start-spark master
     hostname: spark-master
+    networks: 
+     - kafka-network
     ports:
       - "6066:6066"
       - "7077:7077"
       - "8080:8080"
       - "8888:8888"
+    environment:
+      KAFKA_BROKER_URL: kafka:9092
+      TOPIC: queueing.sensors
+      ZOOKEEPER_URL: zookeeper:2181
 
   spark-worker:
-    image: eijiclodetion/spark-alone:2.4.1
+    build: ./stream-data-processing
     command: start-spark worker spark-master
+    networks: 
+     - kafka-network
     environment:
       SPARK_WORKER_CORES: 1
       SPARK_WORKER_MEMORY: 2g
     links:
       - spark-master
 
+# OpenTSDB, serving layer
+  opentsdb:
+    hostname: otsdb-host
+    image: petergrace/opentsdb-docker:latest
+    depends_on: 
+      - namenode
+    environment:
+      - WAITSECS=30
+    networks: 
+     - hdfs-network    
+    ports:
+      - '4242:4242'
+      - '60030:60030'
+    volumes:  
+      - "./data-serving/hbase-site.xml:/opt/hbase/conf/hbase-site.xml"
+
+# Conf
 volumes:
   hadoop_namenode:
   hadoop_datanode1:
@@ -152,6 +227,5 @@ volumes:
   hadoop_historyserver:
 
 networks:
-  default:
-    external:
-      name: kafka-network
+  kafka-network:
+  hdfs-network:

@@ -1,0 +1,12 @@
+{
+ "namespace": "com.measures",
+ "type": "record",
+ "name": "Sensor",
+ "fields": [
+     {"name": "timestamp", "type": "int", "logicalType": "date"},
+     {"name": "room_id", "type": "int", "default": -1},
+     {"name": "data_id", "type": "int", "default": -1},
+     {"name": "data", "type": "float", "default": -999},
+     {"name": "voltage", "type": "float", "default": -999}
+ ]
+}

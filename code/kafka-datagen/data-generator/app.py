@@ -16,16 +16,19 @@ def generate_data(data_id):
     data_id = 1 --> humidity
     data_id = 2 --> light
     """
-    assert data_id in range(3)
+    assert data_id in range(4)
     if data_id == 0:
         # temperature
         data = np.random.normal(20., 5.)
     elif data_id == 1:
         # humidity
         data = np.random.uniform(0., 100.)
-    else:
+    elif data_id == 2:
         # light
         data = np.random.normal(40., 5.)
+    else:
+        # motion
+        data = np.random.randint(0, 2)
     data = np.around(data, decimals=4)
     return data
 
@@ -36,7 +39,7 @@ if __name__ == '__main__':
         now = datetime.now()
         room_id = np.random.randint(1, 54)
         voltage = np.around(np.random.uniform(0., 5.), decimals=4)
-        for i in range(3):
+        for i in range(4):
             sensor_data = generate_data(i)
             data = data_format.format(now, dfmt='%Y-%m-%d', tfmt='%H:%M:%S', room_id=room_id, 
                                     data_id=i, data=sensor_data, volt=voltage)
