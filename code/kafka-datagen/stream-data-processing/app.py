@@ -2,7 +2,7 @@
 
 import os
 import os.path as osp
-import pandas as pd
+import requests
 from operator import add
 from datetime import datetime
 
@@ -17,6 +17,7 @@ from pyspark.streaming.kafka import KafkaUtils
 KAFKA_BROKER_URL = os.environ.get('KAFKA_BROKER_URL')
 ZOOKEEPER_URL = os.environ.get('ZOOKEEPER_URL')
 TOPIC = os.environ.get('TOPIC')
+OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL')
 
 
 def parse_data(line):
@@ -24,8 +25,9 @@ def parse_data(line):
     s = line.strip().split()
     try:
         return [{'time': datetime.strptime(osp.join(s[0],s[1]), '%Y-%m-%d/%H:%M:%S'),
-                 'room_id': int(s[2].split('-')[0]),
-                 'data_id': int(s[2].split('-')[1]),
+                 'mun': str(s[2].split('-')[0]),
+                 'room_id': int(s[2].split('-')[1]),
+                 'data_id': int(s[2].split('-')[2]),
                  'data': float(s[3]),
                  'voltage': float(s[4])
                  }]
@@ -45,16 +47,20 @@ def to_json(data_and_occ):
         out_data[i]['timestamp'] = data[i]['time'].timestamp()
         out_data[i]['value'] = data[i]['data']
         out_data[i]['tags']['space'] = data[i]['room_id']
-        #out_data['tags']['mun'] = data['mun']
+        out_data[i]['tags']['municipality'] = data[i]['mun']
 
         out_occ[i] = {'tags': {}}
         out_occ[i]['metric'] = 'occurence.temperature'
         out_occ[i]['timestamp'] = data[i]['time'].timestamp()
         out_occ[i]['value'] = occ
         out_occ[i]['tags']['space'] = data[i]['room_id']
-        #out_occ['tags']['mun'] = data['mun']
+        out_occ[i]['tags']['municipality'] = data[i]['mun']
     
     return out_data + out_occ
+
+def post_data(db, data):
+    r = requests.post(db, data=data)
+    print(r.status_code)
 
 if __name__ == '__main__':
 
@@ -76,8 +82,9 @@ if __name__ == '__main__':
                         .transform(lambda rdd: rdd.sortBy(lambda v: v[1][1], False)\
                             .zipWithIndex()\
                             .filter(lambda idx: idx[1] < 10))\
-                        .flatMap(lambda x: to_json(x[0][1]))
-                    
+                        .map(lambda x: to_json(x[0][1]))\
+                        #.transform(lambda rdd: post_data(OPENTSDB_URL, rdd))
+
     top_10_temp.pprint()
 
     ssc.start()
