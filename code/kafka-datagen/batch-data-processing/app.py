@@ -59,7 +59,6 @@ def ls(hdfs_url):
             fname=ls[-1]
             fname = fname.split('/')[-1]
             flist.append(fname)
-
     return flist
 
 def select_files(path, thrd):
@@ -89,16 +88,26 @@ if __name__ == '__main__':
         hdfs_files = select_files(HDFS_PATH, time_thrd)
     except:
         print('No data within the past 30 mins')
-        
+        print('Recomputing the whole master dataset ...')
+        hdfs_files = HDFS_PATH
+    
     sensorsRDD = sc.textFile(hdfs_files)
+    dataRDD = sensorsRDD.flatMap(parse_data)
     # temperature data
-    tempRDD = sensorsRDD.flatMap(parse_data)\
-                        .filter(lambda d: d['data_id'] == 0)
+    tempRDD = dataRDD.filter(lambda d: d['data_id'] == 0)
+    # humidity data
+    humidityRDD = dataRDD.filter(lambda d: d['data_id'] == 1)
+    # light data
+    lightRDD = dataRDD.filter(lambda d: d['data_id'] == 2)
+    # motion data
+    motionRDD = dataRDD.filter(lambda d: d['data_id'] == 3)
 
     # group by (day, slot) making integer encoding of day as a key
     slotTempRDD = tempRDD.map(lambda d: (day_key(d), slot_key(d, 15), d))\
                         .groupBy(lambda d: (d[0], d[1]))\
-                        .mapValues(lambda x: [y for y in x])
+                        .map()
+                        .mapValues(lambda x: (sum([y[2]['data'] for y in x]), len([y['data'] for y in x])))\
+                        .mapValues(lambda x: 0 if x[0]/x[1] < 19.5 else 1)
 
     print(slotTempRDD.collect())
 
