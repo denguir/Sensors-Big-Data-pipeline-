@@ -163,6 +163,7 @@ services:
       HDFS_PATH: hdfs://namenode:8020/user/data/sensors
     volumes:
       - ./batch-data-processing/core-site.xml:/home/hadoop/hadoop/etc/hadoop/core-site.xml
+      - ./batch-data-processing/jupyter_notebook_config.py:/root/.jupyter/jupyter_notebook_config.py
 
   spark-worker-hadoop:
     build: ./batch-data-processing
@@ -191,6 +192,8 @@ services:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
       ZOOKEEPER_URL: zookeeper:2181
+    volumes:
+      - ./batch-data-processing/jupyter_notebook_config.py:/root/.jupyter/jupyter_notebook_config.py
 
   spark-worker:
     build: ./stream-data-processing
@@ -218,7 +221,19 @@ services:
       - '60030:60030'
     volumes:  
       - "./data-serving/hbase-site.xml:/opt/hbase/conf/hbase-site.xml"
-
+      - "./data-serving/opentsdb.conf:/etc/opentsdb/opentsdb.conf"
+        
+# Dashboard
+  grafana:
+    image: grafana/grafana
+    user: "root"  
+    networks:
+      - hdfs-network
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./grafana-storage:/var/lib/grafana
+        
 # Conf
 volumes:
   hadoop_namenode:
