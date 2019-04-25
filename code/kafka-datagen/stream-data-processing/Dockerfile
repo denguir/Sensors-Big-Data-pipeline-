@@ -52,6 +52,8 @@ RUN wget https://repo.anaconda.com/archive/Anaconda3-2019.03-Linux-x86_64.sh \
   && chmod +x Anaconda3-2019.03-Linux-x86_64.sh \
   && ./Anaconda3-2019.03-Linux-x86_64.sh -b -p ~/anaconda3
 
+RUN rm Anaconda3-2019.03-Linux-x86_64.sh
+
 RUN /bin/bash -c "source ~/anaconda3/bin/activate && conda init"
 
 RUN ~/anaconda3/bin/conda install -c conda-forge findspark -y
