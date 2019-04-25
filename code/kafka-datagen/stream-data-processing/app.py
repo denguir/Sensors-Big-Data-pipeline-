@@ -59,7 +59,7 @@ def to_json(data_and_occ):
     return out_data + out_occ
 
 def post_data(db, data):
-    r = requests.post(db, data=data)
+    r = requests.post(db + '/api/put', data=data)
     print(r.status_code)
 
 if __name__ == '__main__':
