@@ -193,6 +193,7 @@ services:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
       ZOOKEEPER_URL: zookeeper:2181
+      OPENTSDB_URL: opentsdb:4242
     volumes:
       - ./batch-data-processing/jupyter_notebook_config.py:/root/.jupyter/jupyter_notebook_config.py
 

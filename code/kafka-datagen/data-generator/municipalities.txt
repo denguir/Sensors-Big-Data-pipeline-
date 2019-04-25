@@ -1,0 +1,54 @@
+1,Bruxelles-Ville 
+2,Bruxelles-Ville
+3,Bruxelles-Ville
+4,Schaerbeek
+5,Schaerbeek
+6,Schaerbeek
+7,Etterbeek
+8,Etterbeek
+9,Etterbeek
+10,Ixelles
+11,Ixelles
+12,Ixelles
+13,Saint Gilles
+14,Saint Gilles
+15,Saint Gilles
+16,Anderlecht
+17,Anderlecht
+18,Anderlecht
+19,Molenbeek-St-Jean
+20,Molenbeek-St-Jean
+21,Molenbeek-St-Jean
+22,Koekelberg
+23,Koekelberg
+24,Koekelberg
+25,Berchem-Ste-Agathe
+26,Berchem-Ste-Agathe
+27,Berchem-Ste-Agathe
+28,Ganshoren
+29,Ganshoren
+30,Ganshoren
+31,Jette
+32,Jette
+33,Jette
+34,Evere
+35,Evere
+36,Evere
+37,Woluwé-St-Pierre
+38,Woluwé-St-Pierre
+39,Woluwé-St-Pierre
+40,Auderghem
+41,Auderghem
+42,Auderghem
+43,Watermael-Boitsfort
+44,Watermael-Boitsfort
+45,Watermael-Boitsfort
+46,Uccle
+47,Uccle
+48,Uccle
+49,Forest
+50,Forest
+51,Forest
+52,Woluwé-St-Lambert
+53,Woluwé-St-Lambert
+54,St Josse-ten-Noode
