@@ -98,7 +98,7 @@ services:
     networks: 
      - kafka-network
     ports:
-     - "2182:2181"
+     - "2182:2182"
 
   kafka:
     image: wurstmeister/kafka:latest
@@ -112,7 +112,7 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2182'
       ALLOW_PLAINTEXT_LISTENER: "yes"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
@@ -192,7 +192,7 @@ services:
     environment:
       KAFKA_BROKER_URL: kafka:9092
       TOPIC: queueing.sensors
-      ZOOKEEPER_URL: zookeeper:2181
+      ZOOKEEPER_URL: zookeeper:2182
       OPENTSDB_URL: opentsdb:4242
     volumes:
       - ./batch-data-processing/jupyter_notebook_config.py:/root/.jupyter/jupyter_notebook_config.py
