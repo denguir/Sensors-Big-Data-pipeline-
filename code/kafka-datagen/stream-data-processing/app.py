@@ -3,6 +3,7 @@
 import os
 import os.path as osp
 import requests
+import json
 from operator import add
 from datetime import datetime
 
@@ -22,12 +23,14 @@ OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL')
 
 def parse_data(line):
     '''Parses a single line of sensor data'''
+    # mun_lut = json.loads('municipality.json')
+    # print(mun_lut)
     s = line.strip().split()
     try:
         return [{'time': datetime.strptime(osp.join(s[0],s[1]), '%Y-%m-%d/%H:%M:%S'),
-                 'mun': str(s[2].split(';')[0]),
-                 'room_id': int(s[2].split(';')[1]),
-                 'data_id': int(s[2].split(';')[2]),
+                 'mun': str(s[2].split('-')[0]),
+                 'room_id': int(s[2].split('-')[1]),
+                 'data_id': int(s[2].split('-')[2]),
                  'data': float(s[3]),
                  'voltage': float(s[4])
                  }]
@@ -59,8 +62,8 @@ def to_json(data_and_occ):
     return out_data + out_occ
 
 def post_data(db, data):
-    r = requests.post(db, data=data)
-    print(r.status_code)
+    r = requests.post(db + '/api/put', data=data)
+    return r.status_code
 
 if __name__ == '__main__':
 

@@ -10,7 +10,7 @@ from datetime import datetime
 import findspark
 findspark.init()
 
-from pyspark.sql import SparkSession
+#from pyspark.sql import SparkSession
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 HDFS_PATH = os.environ.get('HDFS_PATH')
@@ -76,15 +76,18 @@ def slot_key(d, size):
 
 def post_data(db, data):
     r = requests.post(db, data=data)
-    print(r.status_code)
+    return r.status_code
 
 if __name__ == '__main__':
     sc = SparkContext("local[*]", "BatchLayer")
     sc.setLogLevel("ERROR")
-    ssc = StreamingContext(sc, 5)
+    ssc = StreamingContext(sc, 10)
 
     sensorStream = ssc.textFileStream(HDFS_PATH)
-    dataStream = sensorStream.flatMap(parse_data).window(60, 5)
+
+    print(datetime.now())
+
+    dataStream = sensorStream.flatMap(parse_data)
     # temperature data
     tempStream = dataStream.filter(lambda d: d['data_id'] == 0)
     # humidity data
@@ -100,6 +103,31 @@ if __name__ == '__main__':
                             .mapValues(lambda x: (sum([y['data'] for y in x]), len([y['data'] for y in x])))\
                             .mapValues(lambda x: 0 if x[0]/x[1] < 19.5 else 1)
                         )
-
     slotTempStream.pprint()
 
+    aggDataStream = dataStream.window(3600, 10)
+    # temperature data
+    aggTempStream = aggDataStream.filter(lambda d: d['data_id'] == 0)
+    minAggTempStream = aggTempStream.map(lambda temp: min(temp))
+    maxAggTempStream = aggTempStream.map(lambda temp: max(temp))
+    meanAggTempStream = aggTempStream.map(lambda temp: sum(temp)/len(temp))
+    # humidity data
+    aggHumidityStream = aggDataStream.filter(lambda d: d['data_id'] == 1)
+    minAggHumidityStream = aggHumidityStream.map(lambda temp: min(temp))
+    maxAggHumidityStream = aggHumidityStream.map(lambda temp: max(temp))
+    meanAggHumidityStream = aggHumidityStream.map(lambda temp: sum(temp)/len(temp))
+    # light data
+    aggLightStream = aggDataStream.filter(lambda d: d['data_id'] == 2)
+    minAggLightStream = aggLightStream.map(lambda temp: min(temp))
+    maxAggLightStream = aggLightStream.map(lambda temp: max(temp))
+    meanAggLightStream = aggLightStream.map(lambda temp: sum(temp)/len(temp))
+    # motion data
+    aggMotionStream = aggDataStream.filter(lambda d: d['data_id'] == 3)
+    minAggMotionStream = aggMotionStream.map(lambda temp: min(temp))
+    maxAggMotionStream = aggMotionStream.map(lambda temp: max(temp))
+    meanAggMotionStream = aggMotionStream.map(lambda temp: sum(temp)/len(temp))
+
+    ssc.start()
+    ssc.awaitTermination()
+
+    # THE ERROR IS PROBABLY DUE TO THE LAST FLUME DATA (WHICH IS AN EMPTY ONE)
