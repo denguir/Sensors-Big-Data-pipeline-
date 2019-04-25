@@ -17,7 +17,7 @@ from pyspark.streaming.kafka import KafkaUtils
 KAFKA_BROKER_URL = os.environ.get('KAFKA_BROKER_URL')
 ZOOKEEPER_URL = os.environ.get('ZOOKEEPER_URL')
 TOPIC = os.environ.get('TOPIC')
-OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL') + '/api/version'
+OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL')
 
 
 def parse_data(line):
@@ -59,7 +59,7 @@ def to_json(data_and_occ):
     return out_data + out_occ
 
 def post_data(db, data):
-    r = requests.get(db)
+    r = requests.post(db, data=data)
     print(r.status_code)
 
 if __name__ == '__main__':
