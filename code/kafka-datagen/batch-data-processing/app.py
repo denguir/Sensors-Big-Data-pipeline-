@@ -2,7 +2,7 @@
 
 import os
 import os.path as osp
-import pandas as pd
+import requests
 import subprocess
 from operator import add
 from datetime import datetime
@@ -11,6 +11,8 @@ import findspark
 findspark.init()
 
 from pyspark.sql import SparkSession
+from pyspark import SparkContext
+from pyspark.streaming import StreamingContext
 HDFS_PATH = os.environ.get('HDFS_PATH')
 
 def parse_data(line):
@@ -34,80 +36,70 @@ def slot_key(d, size):
     return (60*d['time'].hour + d['time'].minute)//size
 
 
-def run_cmd(args_list):
-    proc = subprocess.Popen(args_list, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-    (output, errors) = proc.communicate()
-    if proc.returncode:
-        raise RuntimeError(
-            'Error running command: %s. Return code: %d, Error: %s' % (
-                ' '.join(args_list), proc.returncode, errors))
-    return (output, errors)
+# def run_cmd(args_list):
+#     proc = subprocess.Popen(args_list, stdout=subprocess.PIPE,
+#             stderr=subprocess.PIPE)
+#     (output, errors) = proc.communicate()
+#     if proc.returncode:
+#         raise RuntimeError(
+#             'Error running command: %s. Return code: %d, Error: %s' % (
+#                 ' '.join(args_list), proc.returncode, errors))
+#     return (output, errors)
 
-def ls(hdfs_url):
-    """
-    List the hdfs URL.  If the URL is a directory, the contents are returned.
-    full=True ensures hdfs:// is prepended
-    """
-    out, err = run_cmd(['hadoop', 'fs', '-ls', hdfs_url])
-    flist = []
-    lines = out.decode('utf-8').split('\n')
-    for line in lines:
-        ls = line.split()
-        if len(ls) == 8:
-            # this is a file description line
-            fname=ls[-1]
-            fname = fname.split('/')[-1]
-            flist.append(fname)
-    return flist
+# def ls(hdfs_url):
+#     """
+#     List the hdfs URL.  If the URL is a directory, the contents are returned.
+#     full=True ensures hdfs:// is prepended
+#     """
+#     out, err = run_cmd(['hadoop', 'fs', '-ls', hdfs_url])
+#     flist = []
+#     lines = out.decode('utf-8').split('\n')
+#     for line in lines:
+#         ls = line.split()
+#         if len(ls) == 8:
+#             # this is a file description line
+#             fname=ls[-1]
+#             fname = fname.split('/')[-1]
+#             flist.append(fname)
+#     return flist
 
-def select_files(path, thrd):
-    '''Select the most recent files from the HDFS path
-    with respect to a given time threshold
-    expected input example: FlumeData.1556035720679'''
-    files = ls(path)
-    selected_files = list(map(lambda f: (int(f.strip().split('.')[1]), osp.join(path, f)), files))
-    selected_files = list(filter(lambda pair: pair[0] > thrd, selected_files))
-    selected_files = list(map(lambda pair: pair[1], selected_files))
-    f = ','.join(selected_files)
-    return f
+# def select_files(path, thrd):
+#     '''Select the most recent files from the HDFS path
+#     with respect to a given time threshold
+#     expected input example: FlumeData.1556035720679'''
+#     files = ls(path)
+#     selected_files = list(map(lambda f: (int(f.strip().split('.')[1]), osp.join(path, f)), files))
+#     selected_files = list(filter(lambda pair: pair[0] > thrd, selected_files))
+#     selected_files = list(map(lambda pair: pair[1], selected_files))
+#     f = ','.join(selected_files)
+#     return f
 
-
+def post_data(db, data):
+    r = requests.post(db, data=data)
+    print(r.status_code)
 
 if __name__ == '__main__':
-    spark = SparkSession \
-            .builder \
-            .master("local[*]") \
-            .appName("BatchLayer") \
-            .getOrCreate()
-    sc = spark.sparkContext
+    sc = SparkContext("local[*]", "BatchLayer")
+    sc.setLogLevel("ERROR")
+    ssc = StreamingContext(sc, 5)
 
-    # open the whole directoty and select the most recent files (30 min old) with 2h correction
-    time_thrd = int((datetime.now().timestamp() - 30 * 60 - 2 * 3600) * 1000) # *1000 because 3rd decimal precision
-    try:
-        hdfs_files = select_files(HDFS_PATH, time_thrd)
-    except:
-        print('No data within the past 30 mins')
-        print('Recomputing the whole master dataset ...')
-        hdfs_files = HDFS_PATH
-    
-    sensorsRDD = sc.textFile(hdfs_files)
-    dataRDD = sensorsRDD.flatMap(parse_data)
+    sensorStream = ssc.textFileStream(HDFS_PATH)
+    dataStream = sensorStream.flatMap(parse_data).window(60, 5)
     # temperature data
-    tempRDD = dataRDD.filter(lambda d: d['data_id'] == 0)
+    tempStream = dataStream.filter(lambda d: d['data_id'] == 0)
     # humidity data
-    humidityRDD = dataRDD.filter(lambda d: d['data_id'] == 1)
+    humidityStream = dataStream.filter(lambda d: d['data_id'] == 1)
     # light data
-    lightRDD = dataRDD.filter(lambda d: d['data_id'] == 2)
+    lightStream = dataStream.filter(lambda d: d['data_id'] == 2)
     # motion data
-    motionRDD = dataRDD.filter(lambda d: d['data_id'] == 3)
+    motionStream = dataStream.filter(lambda d: d['data_id'] == 3)
 
     # group by (day, slot) making integer encoding of day as a key
-    slotTempRDD = tempRDD.map(lambda d: (day_key(d), slot_key(d, 15), d))\
-                        .groupBy(lambda d: (d[0], d[1]))\
-                        .map()
-                        .mapValues(lambda x: (sum([y[2]['data'] for y in x]), len([y['data'] for y in x])))\
-                        .mapValues(lambda x: 0 if x[0]/x[1] < 19.5 else 1)
+    slotTempStream = tempStream.map(lambda d: (day_key(d), slot_key(d, 15), d))\
+                        .transform(lambda rdd: rdd.groupBy(lambda d: (d[0], d[1]))\
+                            .mapValues(lambda x: (sum([y['data'] for y in x]), len([y['data'] for y in x])))\
+                            .mapValues(lambda x: 0 if x[0]/x[1] < 19.5 else 1)
+                        )
 
-    print(slotTempRDD.collect())
+    slotTempStream.pprint()
 
