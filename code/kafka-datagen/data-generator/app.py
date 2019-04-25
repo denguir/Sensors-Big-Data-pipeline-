@@ -54,7 +54,7 @@ def get_municipalities(file):
 
 if __name__ == '__main__':
     producer = KafkaProducer(bootstrap_servers=[KAFKA_BROKER_URL], api_version=(0, 10, 1))
-    data_format = "{:{dfmt} {tfmt}} {municipality}-{room_id}-{data_id} {data} {volt}"
+    data_format = "{:{dfmt} {tfmt}} {municipality};{room_id};{data_id} {data} {volt}"
     municipalities = get_municipalities('municipalities.txt')
     while True:
         now = datetime.now()

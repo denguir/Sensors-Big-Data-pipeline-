@@ -17,7 +17,7 @@ from pyspark.streaming.kafka import KafkaUtils
 KAFKA_BROKER_URL = os.environ.get('KAFKA_BROKER_URL')
 ZOOKEEPER_URL = os.environ.get('ZOOKEEPER_URL')
 TOPIC = os.environ.get('TOPIC')
-OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL')
+OPENTSDB_URL = 'http://' + os.environ.get('OPENTSDB_URL') + '/api/version'
 
 
 def parse_data(line):
@@ -25,9 +25,9 @@ def parse_data(line):
     s = line.strip().split()
     try:
         return [{'time': datetime.strptime(osp.join(s[0],s[1]), '%Y-%m-%d/%H:%M:%S'),
-                 'mun': str(s[2].split('-')[0]),
-                 'room_id': int(s[2].split('-')[1]),
-                 'data_id': int(s[2].split('-')[2]),
+                 'mun': str(s[2].split(';')[0]),
+                 'room_id': int(s[2].split(';')[1]),
+                 'data_id': int(s[2].split(';')[2]),
                  'data': float(s[3]),
                  'voltage': float(s[4])
                  }]
@@ -59,7 +59,7 @@ def to_json(data_and_occ):
     return out_data + out_occ
 
 def post_data(db, data):
-    r = requests.post(db, data=data)
+    r = requests.get(db)
     print(r.status_code)
 
 if __name__ == '__main__':
@@ -83,7 +83,7 @@ if __name__ == '__main__':
                             .zipWithIndex()\
                             .filter(lambda idx: idx[1] < 10))\
                         .map(lambda x: to_json(x[0][1]))\
-                        #.transform(lambda rdd: post_data(OPENTSDB_URL, rdd))
+                        .transform(lambda rdd: post_data(OPENTSDB_URL, rdd))
 
     top_10_temp.pprint()
 
