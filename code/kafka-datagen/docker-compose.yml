@@ -201,7 +201,7 @@ services:
     build: ./stream-data-processing
     command: start-spark worker spark-master
     networks: 
-     - kafka-network
+      - kafka-network
     environment:
       SPARK_WORKER_CORES: 1
       SPARK_WORKER_MEMORY: 2g
