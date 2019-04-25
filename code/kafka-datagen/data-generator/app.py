@@ -32,17 +32,38 @@ def generate_data(data_id):
     data = np.around(data, decimals=4)
     return data
 
+def get_locs(file):
+    '''Extracts coordinates of sensors from a txt file'''
+    lut = dict()
+    with open(file, 'r') as f:
+        locs = f.readlines()
+    locs = list(map(lambda line: line.strip().split(), locs))
+    for data in locs:
+    	lut[int(data[0])] = (float(data[1]), float(data[2]))
+    return lut
+
+def get_municipalities(file):
+    '''Extracts municipality of each sensor from a txt file'''
+    lut = dict()
+    with open(file, 'r') as f:
+        m = f.readlines()
+    m = list(map(lambda line: line.strip().split(','), m))
+    for data in m:
+        lut[int(data[0])] = data[1]
+    return lut
+
 if __name__ == '__main__':
     producer = KafkaProducer(bootstrap_servers=[KAFKA_BROKER_URL], api_version=(0, 10, 1))
-    data_format = "{:{dfmt} {tfmt}} {room_id}-{data_id} {data} {volt}"
+    data_format = "{:{dfmt} {tfmt}} {municipality}-{room_id}-{data_id} {data} {volt}"
+    municipalities = get_municipalities('municipalities.txt')
     while True:
         now = datetime.now()
         room_id = np.random.randint(1, 54)
         voltage = np.around(np.random.uniform(0., 5.), decimals=4)
         for i in range(4):
             sensor_data = generate_data(i)
-            data = data_format.format(now, dfmt='%Y-%m-%d', tfmt='%H:%M:%S', room_id=room_id, 
-                                    data_id=i, data=sensor_data, volt=voltage)
+            data = data_format.format(now, dfmt='%Y-%m-%d', tfmt='%H:%M:%S', municipality=municipalities[room_id], 
+                                room_id=room_id, data_id=i, data=sensor_data, volt=voltage)
             print(data)
             producer.send(TOPIC, key=bytes([room_id]), value=bytes(data, encoding='utf-8'))
         producer.flush()
