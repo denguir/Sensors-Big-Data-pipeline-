@@ -2,7 +2,7 @@
 
 The Brussels government, wanting to lay claim to the title of smart city, has initiated a project where it will equip a modest number of households and public buildings with such sensors. The project consists in implementing a Big Data Management & Analytics (BDMA) platform that will store, manage and analyze this sensor data.
 The project is divided into two phases:
-1. In Phase I, you need to design the Big Data Management pipeline that will be used to store and manage the sensor data, as well as implement certain batch and streaming queries for the pipeline in order to show its feasibility.
+1. In Phase I, you need to design the Big Data Management pipeline that will be used to store and manage the sensor data, as well as implement certain batch and streaming queries for the pipeline in order to show its feasibility. `The report can be found in the docs folder`.
 2. In Phase II, you will employ Machine Learning methods on actual sensor data in order to build a model of the data that can be used for predictions.
 
 ## Big Data Management pipeline (Phase I)
@@ -18,6 +18,7 @@ Consists in implementing batch and streaming queries to show feasibility.
 
 - **Sensors**:
     - ID
+    - Municiplality ID
     - Types:
         - Temperatures: Float C
         - Humidity: FLoat %
@@ -127,3 +128,75 @@ Data / min = # spaces x # sensors x 60s/30s
     
 
 ### Installation
+
+Requirements: docker & docker-compose 
+
+### How to Use
+
+- On localhost:
+
+	Step 1: Lauch all Services:
+		- Run "docker-compose up -d" under /code/kafka-datagen directory
+		- A juptyter notebook should be available on localhost:8888 and localhost:8889
+
+	Step 3: Run the Speed Layer:
+		- Type localhost:8888 in your favorite browser, than open a New Terminal
+		- Then, execute "python app.py"
+
+	Step 4: Run the Batch Layer:
+		- Type localhost:8889 in your favorite browser, than open a New Terminal
+		- Then, execute "cd notebooks" and "python app.py"
+
+	Step 5: Visualize the data:
+		- Go to localhost:3000, a Grafana Dashboard should be available
+		- Login as admin (password: admin)
+		- You can then create your own dashboards under "CREATE NEW DASHBOARD"
+
+	Step 6: Perform a query:
+		- Choose "Add query"
+		- Under Metric, type a metric name (example: 'temperature')
+		- Specify an aggregator (example: 'max')
+		- You can specify a Downsample window (example: 1m) with an aggregator (example: 'avg')
+		- Under Filters, you can filter by space and aggregators, example:
+			city = iliteral_or(Brussels) , groupBy = true  
+			_aggregate = iliteral_or(MAX) , groupBy = false
+		- The result of this query gives you the MAX temperature for each 1-minute time window
+
+- On our Server (http://52.91.196.166)
+
+	Steps 1 to 4 are already done (everything already running):
+		- You can visit the SpeedLayer Running terminal on http://52.91.196.166:8888
+		- You can visit the BatchLayer Running terminal on http://52.91.196.166:8889
+	Step 5 and 6:
+		- Same as for localhost case
+
+### Additional notes about Grafana
+
+`user: admin`  
+`pass: admin`
+
+You can already access the following created dashboards:
+
+- [Time (temperature)](http://52.91.196.166:3000/d/e94z7zmZk/time-temperature?orgId=1&from=1556825867230&to=1556912267230)
+- [Brussels, Humidity sensors](http://52.91.196.166:3000/d/-L0bWkmZk/brussels-humidity-sensors?orgId=1&from=1556826113343&to=1556912513343)
+- [Brussels, Motion sensors](http://52.91.196.166:3000/d/v89KmziZz/brussels-motion-sensors?orgId=1&from=1556890947100&to=1556912547100)
+- [Brussels, light sensors](http://52.91.196.166:3000/d/GvPAzkmWk/brussels-light-sensors?orgId=1&from=1556891166726&to=1556912766727)
+- [Brussels, temperature sensors](http://52.91.196.166:3000/d/d4mVwkmZk/frequent-temperature-brussels?orgId=1&from=1556826412058&to=1556912812058)
+
+The available Metrics are:
+- temperature
+- humidity
+- light
+- motion
+- temperature.occurence
+- occurence.temperature
+
+Note that you can also filter by other space granularities:
+- space: from 1 to 54
+- municipality: from 0 to 18
+- city: Brussels (only available)
+
+You can also use other aggregation operation following your query
+	
+
+
